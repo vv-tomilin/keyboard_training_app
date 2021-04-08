@@ -11,9 +11,11 @@ const text = `Объединение монгольских племен в не
 
 const input = document.querySelector('input');
 const letters = Array.from(document.querySelectorAll('[data-letters]'));
-const specials = Array.from(document.querySelectorAll('[data-special]'));
+const specials = Array.from(document.querySelectorAll('[data-spec]'));
+const textExample = document.querySelector('#textExample');
 
 const party = createParty(text);
+//console.log(party);
 
 init();
 
@@ -28,10 +30,9 @@ function keydownHandler(event) {
 
 	const letter = letters.find(x => x.dataset.letters.includes(event.key));
 
-	console.log(event.key);
-
 	if (letter) {
 		letter.classList.add('pressed');
+		press(event.key);
 		return;
 	}
 
@@ -39,9 +40,14 @@ function keydownHandler(event) {
 
 	if (key === ' ') {
 		key = 'space';
+		press(' ');
 	}
 
-	const ownSpecial = specials.filter((x) => x.dataset.special === key);
+	if (key === 'enter') {
+		press('\n')
+	}
+
+	const ownSpecial = specials.filter((x) => x.dataset.spec === key);
 
 	if (ownSpecial.length) {
 		ownSpecial.forEach((spec) => spec.classList.add('pressed-special'));
@@ -57,8 +63,6 @@ function keyupHandler(event) {
 
 	const letter = letters.find(x => x.dataset.letters.includes(event.key));
 
-	console.log(event.key);
-
 	if (letter) {
 		letter.classList.remove('pressed');
 		return;
@@ -70,7 +74,7 @@ function keyupHandler(event) {
 		key = 'space';
 	}
 
-	const ownSpecial = specials.filter((x) => x.dataset.special === key);
+	const ownSpecial = specials.filter((x) => x.dataset.spec === key);
 
 	if (ownSpecial.length) {
 		ownSpecial.forEach((spec) => spec.classList.remove('pressed-special'));
@@ -88,7 +92,7 @@ function createParty(text) {
 		maxShowStrings: 3,
 
 		currentStringIndex: 0,
-		currentPrintedIndex: 0,
+		currentPressedIndex: 0,
 
 		errors: [],
 	};
@@ -119,5 +123,115 @@ function createParty(text) {
 		party.strings.push(string.join(' '));
 	}
 
+	//console.log(words);
+
 	return party;
+}
+
+
+function press(letter) {
+	const string = party.strings[party.currentStringIndex];
+	const mustLetter = string[party.currentPressedIndex];
+
+	if (letter === mustLetter) {
+
+		party.currentPressedIndex++;
+
+		//* убираем первую строку, которую допечатали и переходим на следущую
+		if (string.length <= party.currentPressedIndex) {
+			party.currentPressedIndex = 0;
+			party.currentStringIndex++;
+		}
+
+	} else if (!party.errors.includes(mustLetter)) {
+		party.errors.push(mustLetter);
+	}
+
+	viewUpdate();
+}
+
+function viewUpdate() {
+
+	const string = party.strings[party.currentStringIndex];
+
+	const showedStrings = party.strings.slice(party.currentStringIndex, party.currentStringIndex + party.maxShowStrings);
+
+	const div = document.createElement('div');
+
+	//* Генерируем первую строчку
+	const firstLine = document.createElement('div');
+	firstLine.classList.add('line');
+	div.append(firstLine);
+
+	const done = document.createElement('span');
+	done.classList.add('done');
+	done.textContent = string.slice(0, party.currentPressedIndex);
+	firstLine.append(
+		done,
+		...string
+			.slice(party.currentPressedIndex)
+			.split('')
+			.map(letter => {
+				//* вместо пробела точка
+				if (letter === ' ') {
+					return '·';
+				}
+
+				//* вместо переноса строки
+				if (letter === '\n') {
+					return '¶';
+				}
+
+				//* если ошиблись в символе
+				if (party.errors.includes(letter)) {
+					const errorSpan = document.createElement('span');
+					errorSpan.classList.add('hint');
+					errorSpan.textContent = letter;
+					return errorSpan;
+				}
+				
+				return letter;
+			}));
+
+
+	//* Генерируем остальные строки
+	for (let i = 1; i < showedStrings.length; i++) {
+
+		const line = document.createElement('div');
+		line.classList.add('line');
+		div.append(line);
+
+		line.append(
+			...showedStrings[i]
+				.split('')
+				.map(letter => {
+					//* вместо пробела точка
+					if (letter === ' ') {
+						return '·';
+					}
+
+					//* вместо переноса строки
+					if (letter === '\n') {
+						return '¶';
+					}
+
+					//* если ошиблись в символе
+					if (party.errors.includes(letter)) {
+						const errorSpan = document.createElement('span');
+						errorSpan.classList.add('hint');
+						errorSpan.textContent = letter;
+						return errorSpan;
+					}
+
+					return letter;
+				}));
+	}
+
+	console.log(showedStrings);
+
+	textExample.innerHTML = '';
+	textExample.append(div);
+
+	//* Отображаем символы которые печатаем в поле ввода
+	input.value = string.slice(0, party.currentPressedIndex);
 }
