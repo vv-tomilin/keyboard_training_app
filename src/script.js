@@ -14,6 +14,9 @@ const letters = Array.from(document.querySelectorAll('[data-letters]'));
 const specials = Array.from(document.querySelectorAll('[data-spec]'));
 const textExample = document.querySelector('#textExample');
 
+const simbolsPerMinute = document.querySelector('#symbolsPerMinute');
+const errorPercent = document.querySelector('#errorPercent');
+
 const party = createParty(text);
 //console.log(party);
 
@@ -22,6 +25,8 @@ init();
 function init() {
 	input.addEventListener('keydown', keydownHandler);
 	input.addEventListener('keyup', keyupHandler);
+
+	viewUpdate();
 }
 
 function keydownHandler(event) {
@@ -94,7 +99,14 @@ function createParty(text) {
 		currentStringIndex: 0,
 		currentPressedIndex: 0,
 
+		started: false,
 		errors: [],
+
+		statisticFlag: false,
+		timerCounter: 0,
+		startTimer: 0,
+		errorCounter: 0,
+		commonCounter: 0,
 	};
 
 	party.text = party.text.replace(/\n/g, '\n ');
@@ -130,6 +142,16 @@ function createParty(text) {
 
 
 function press(letter) {
+
+	party.started = true;
+
+	if (!party.statisticFlag) {
+
+		party.statisticFlag = true;
+
+		party.startTimer = Date.now();
+	}
+
 	const string = party.strings[party.currentStringIndex];
 	const mustLetter = string[party.currentPressedIndex];
 
@@ -141,11 +163,18 @@ function press(letter) {
 		if (string.length <= party.currentPressedIndex) {
 			party.currentPressedIndex = 0;
 			party.currentStringIndex++;
+
+			party.statisticFlag = false;
+			party.timerCounter = Date.now() - party.startTimer;
 		}
 
 	} else if (!party.errors.includes(mustLetter)) {
 		party.errors.push(mustLetter);
+
+		party.errorCounter++;
 	}
+
+	party.commonCounter++;
 
 	viewUpdate();
 }
@@ -189,7 +218,7 @@ function viewUpdate() {
 					errorSpan.textContent = letter;
 					return errorSpan;
 				}
-				
+
 				return letter;
 			}));
 
@@ -234,4 +263,10 @@ function viewUpdate() {
 
 	//* Отображаем символы которые печатаем в поле ввода
 	input.value = string.slice(0, party.currentPressedIndex);
+
+
+	if (!party.statisticFlag && party.started) {
+		simbolsPerMinute.textContent = Math.round((60000 * party.commonCounter) / party.timerCounter);
+		errorPercent.textContent = Math.floor((10000 * party.errorCounter) / party.commonCounter) / 100 + "%";
+	}
 }
